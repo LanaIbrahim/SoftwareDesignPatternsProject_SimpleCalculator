@@ -3,64 +3,72 @@ package Calc;
 import java.awt.Color;
 import java.awt.event.*;
 import javax.swing.JButton;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.event.*;
+import javax.swing.*;
 
 /**
  *
  * @author youcefhmd
  */
 public final class Calculator extends javax.swing.JFrame {
-
     private String currentOperand;
     private String previousOperand;
     private String operation;
-
+    private static Calculator instance;
     private int x, y;
+    private DefaultListModel<String> listModel;
+    private JList<String> historyList;
+    private JScrollPane scrollPane;
+    private JFrame historyFrame;
 
-    public Calculator() {
+    
+    private Calculator() {
         initComponents();
         getContentPane().setSize(400, 700);
-        this.clear();
+        this.clear(); 
         this.addEvents();
+        listModel = new DefaultListModel<>();
+        historyList = new JList<>(listModel);
+        historyList.setVisibleRowCount(10);
+        scrollPane = new JScrollPane(historyList);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        add(scrollPane, BorderLayout.EAST);
+
+    }
+    
+    public static Calculator getInstance() {
+        if (instance == null) {
+            instance = new Calculator();
+        }
+        return instance;
+    }
+
+
+    public JScrollPane getScrollPane() {
+        return scrollPane;
+    }
+
+    public void addHistory(String entry) {
+        listModel.addElement(entry);
+        historyList.ensureIndexIsVisible(listModel.size() - 1); 
+    }
+    public void deleteOne() {
+    if (!this.currentOperand.isEmpty()) {
+        this.currentOperand = this.currentOperand.substring(0, this.currentOperand.length() - 1);
+        this.updateDisplay();
+    }
+}
+
+    public void equalsAndRefresh() {
+    this.compute();
+    this.updateDisplay();
+    if ("Error".equals(this.currentOperand)) this.currentOperand = "";
     }
 
     public void addEvents() {
-        JButton[] btns = {
-            btn0, btn1, btn2, btn3, btn4,
-            btn5, btn6, btn7, btn8, btn9,
-            btnDiv, btnDot, btnEqual, btnDel,
-            btnMult, btnPlus, btnPlusSub, btnSub, btnClear
-        };
-
-        JButton[] numbers = {
-            btn0, btn1, btn2, btn3, btn4,
-            btn5, btn6, btn7, btn8, btn9
-        };
-
-        for (JButton number : numbers) {
-            number.addActionListener((ActionEvent e) -> {
-                appendNumber(((JButton) e.getSource()).getText());
-            });
-        }
-
-        for (JButton btn : btns) {
-            btn.addMouseListener(new MouseAdapter() {
-
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    ((JButton) e.getSource()).setBackground(new Color(73, 69, 78));
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    Object b = e.getSource();
-                    if (b == btnDiv || b == btnEqual || b == btnDel || b == btnMult || b == btnSub || b == btnPlus || b == btnClear) {
-                        ((JButton) b).setBackground(new Color(41, 39, 44));
-                    } else {
-                        ((JButton) b).setBackground(new Color(21, 20, 22));
-                    }
-                }
-            });
-        }
+    UIControlsFacade.attach(app, this); 
     }
 
     public void clear() {
@@ -71,20 +79,11 @@ public final class Calculator extends javax.swing.JFrame {
     }
 
     public void appendNumber(String number) {
-        if (this.currentOperand.equals("0") && number.equals("0")) {
-            return;
-        }
-
-        if (number.equals(".") && this.currentOperand.contains(".")) {
-            return;
-        }
-
-        if (this.currentOperand.equals("0")
-                && !number.equals("0")
-                && !number.equals(".")) {
+        if (this.currentOperand.equals("0") && number.equals("0")) return;
+        if (number.equals(".") && this.currentOperand.contains(".")) return;
+        if (this.currentOperand.equals("0") && !number.equals("0") && !number.equals(".")) {
             this.currentOperand = "";
         }
-
         this.currentOperand += number;
         this.updateDisplay();
     }
@@ -94,9 +93,8 @@ public final class Calculator extends javax.swing.JFrame {
             this.operation = operation;
             this.updateDisplay();
         }
-        if (this.currentOperand.equals("")) {
-            return;
-        }
+
+        if (this.currentOperand.equals("")) return;
 
         if (!this.previousOperand.equals("")) {
             this.compute();
@@ -108,48 +106,32 @@ public final class Calculator extends javax.swing.JFrame {
         this.updateDisplay();
     }
 
-    public void compute() {
-        float computation;
-        if (this.currentOperand.equals("") || this.previousOperand.equals("")) {
-            return;
-        }
+public void compute() {
+    if (this.currentOperand.equals("") || this.previousOperand.equals("")) return;
 
+    try {
         float curr = Float.parseFloat(this.currentOperand);
         float prev = Float.parseFloat(this.previousOperand);
-        if (Float.isNaN(curr) || Float.isNaN(prev)) {
-            return;
-        }
+        Operation op = OperationFactory.getOperation(this.operation);
+        float computation = op.apply(prev, curr);
 
-        switch (this.operation) {
-            case "+" ->
-                computation = prev + curr;
-            case "-" ->
-                computation = prev - curr;
-            case "×" ->
-                computation = prev * curr;
-            case "÷" -> {
-                if (curr == 0) {
-                    this.clear();
-                    this.currentOperand = "Error";
-                    return;
-                }
-                computation = prev / curr;
-            }
-            default -> {
-                return;
-            }
-        }
+        String result = (computation - (int) computation) != 0 ? Float.toString(computation) : Integer.toString((int) computation);
 
-        this.currentOperand = (computation - (int) computation) != 0 ? Float.toString(computation) : Integer.toString((int) computation);
+           addHistory(this.previousOperand + " " + this.operation + " " + this.currentOperand + " = " + result);
+        
+
+        this.currentOperand = result;
         this.previousOperand = "";
         this.operation = "";
+    } catch (Exception ex) {
+        this.currentOperand = "Error";
     }
+}
 
     public void updateDisplay() {
         current.setText(this.currentOperand);
         previous.setText(previousOperand + " " + this.operation);
     }
-
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
