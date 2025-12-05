@@ -12,6 +12,10 @@ package Calc;
 import javax.swing.*;
 import java.awt.*;
 
+
+
+//concerete decorator
+
 public class ScrollDecorator extends HistoryDecorator {
 
     public ScrollDecorator(HistoryComponent component) {

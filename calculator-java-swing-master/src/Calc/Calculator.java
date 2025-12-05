@@ -13,29 +13,31 @@ import javax.swing.*;
  * @author youcefhmd
  */
 public final class Calculator extends javax.swing.JFrame {
-    private String currentOperand;
-    private String previousOperand;
-    private String operation;
+    String currentOperand;
+    String previousOperand;
+    String operation;
     private static Calculator instance;
     private int x, y;
-    private DefaultListModel<String> listModel;
-    private JList<String> historyList;
-    private JScrollPane scrollPane;
+    private HistoryPanel historyPanel;
     private JFrame historyFrame;
+    private HistoryComponent scrollableHistory;
+    private CalculatorCareTaker caretaker;
+    protected CalculatorState state = new StartState();
 
     
     private Calculator() {
+        caretaker = new CalculatorCareTaker();
+        currentOperand = "";
+        previousOperand = "";
+        operation = "";
         initComponents();
         getContentPane().setSize(400, 700);
         this.clear(); 
         this.addEvents();
-        listModel = new DefaultListModel<>();
-        historyList = new JList<>(listModel);
-        historyList.setVisibleRowCount(10);
-        scrollPane = new JScrollPane(historyList);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        add(scrollPane, BorderLayout.EAST);
-
+        historyPanel = new HistoryPanel();
+        scrollableHistory = new ScrollDecorator(historyPanel);
+        JPanel historyPanelUI = scrollableHistory.getPanel();
+        add(historyPanelUI, BorderLayout.EAST);
     }
     
     public static Calculator getInstance() {
@@ -44,16 +46,13 @@ public final class Calculator extends javax.swing.JFrame {
         }
         return instance;
     }
-
-
-    public JScrollPane getScrollPane() {
-        return scrollPane;
-    }
-
     public void addHistory(String entry) {
-        listModel.addElement(entry);
-        historyList.ensureIndexIsVisible(listModel.size() - 1); 
+    if (historyPanel != null) {
+        historyPanel.addEntry(entry);
     }
+}
+
+    
     public void deleteOne() {
     if (!this.currentOperand.isEmpty()) {
         this.currentOperand = this.currentOperand.substring(0, this.currentOperand.length() - 1);
@@ -72,6 +71,7 @@ public final class Calculator extends javax.swing.JFrame {
     }
 
     public void clear() {
+        saveToMemento();
         this.currentOperand = "";
         this.previousOperand = "";
         this.operation = "";
@@ -79,6 +79,7 @@ public final class Calculator extends javax.swing.JFrame {
     }
 
     public void appendNumber(String number) {
+        saveToMemento();
         if (this.currentOperand.equals("0") && number.equals("0")) return;
         if (number.equals(".") && this.currentOperand.contains(".")) return;
         if (this.currentOperand.equals("0") && !number.equals("0") && !number.equals(".")) {
@@ -88,23 +89,20 @@ public final class Calculator extends javax.swing.JFrame {
         this.updateDisplay();
     }
 
-    public void chooseOperation(String operation) {
-        if (this.currentOperand.equals("") && !this.previousOperand.equals("")) {
-            this.operation = operation;
-            this.updateDisplay();
-        }
-
+    public void chooseOperation(String operation) { 
+        saveToMemento();
         if (this.currentOperand.equals("")) return;
 
         if (!this.previousOperand.equals("")) {
             this.compute();
-        }
-
-        this.operation = operation;
-        this.previousOperand = this.currentOperand;
-        this.currentOperand = "";
-        this.updateDisplay();
     }
+
+    this.operation = operation;
+    this.previousOperand = this.currentOperand;
+    this.currentOperand = "";
+    this.updateDisplay();
+}
+
 
 public void compute() {
     if (this.currentOperand.equals("") || this.previousOperand.equals("")) return;
@@ -127,7 +125,27 @@ public void compute() {
         this.currentOperand = "Error";
     }
 }
+   private void saveToMemento() {
+        caretaker.addMemento(new CalculatorMemento(currentOperand, previousOperand, operation));
+    }
 
+    public void restoreFromMemento(CalculatorMemento memento) {
+        this.currentOperand = memento.getCurrentOperand();
+        this.previousOperand = memento.getPreviousOperand();
+        this.operation = memento.getOperation();
+        updateDisplay();
+    }
+    
+
+    public void setState(CalculatorState state) {
+    this.state = state;
+    }
+    
+    public void appendDigitLogic(String digit) {
+    this.currentOperand += digit;
+    this.updateDisplay();
+    }
+    
     public void updateDisplay() {
         current.setText(this.currentOperand);
         previous.setText(previousOperand + " " + this.operation);

@@ -39,7 +39,7 @@ public final class UIControlsFacade {
             case "=" -> b.addActionListener(e -> calc.equalsAndRefresh());
             case "DEL" -> b.addActionListener(e -> calc.deleteOne());
             case "C", "AC", "Clear" -> b.addActionListener(e -> calc.clear());
-            default -> { /* ignore other buttons (e.g., window controls) */ }
+            default -> {  }
         }
     }
 }

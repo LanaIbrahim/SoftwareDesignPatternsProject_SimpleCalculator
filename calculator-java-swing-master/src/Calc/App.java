@@ -8,7 +8,8 @@ package Calc;
 public class App {
 
     public static void main(String[] args) {
-        new Calculator().setVisible(true);
-    }
-
+        Calculator calc = Calculator.getInstance();
+    
+    UIControlsFacade.attach(calc.getContentPane(), calc);
+    calc.setVisible(true);}
 }
